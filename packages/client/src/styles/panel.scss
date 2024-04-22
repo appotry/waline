@@ -1,5 +1,3 @@
-@use 'emoji';
-
 .wl-comment {
   position: relative;
   display: flex;
@@ -9,7 +7,7 @@
 .wl-close {
   position: absolute;
   top: -4px;
-  right: -4px;
+  inset-inline-end: -4px;
 
   padding: 0;
   border: none;
@@ -30,7 +28,7 @@
 .wl-logout-btn {
   position: absolute;
   top: -10px;
-  right: -10px;
+  inset-inline-end: -10px;
 
   padding: 3px;
   border: none;
@@ -80,7 +78,7 @@
   border: var(--waline-border);
   border-radius: 0.75em;
 
-  background: var(--waline-bgcolor);
+  background: var(--waline-bg-color);
   box-shadow: var(--waline-box-shadow);
 }
 
@@ -154,21 +152,6 @@
   }
 }
 
-.wl-editor,
-.wl-input {
-  max-width: 100%;
-  border: none;
-
-  color: var(--waline-color);
-  outline: none;
-
-  transition: all 0.25s ease;
-
-  &:focus {
-    background: var(--waline-bgcolor-light);
-  }
-}
-
 .wl-editor {
   position: relative;
 
@@ -184,6 +167,21 @@
   resize: vertical;
 }
 
+.wl-editor,
+.wl-input {
+  max-width: 100%;
+  border: none;
+
+  color: var(--waline-color);
+  outline: none;
+
+  transition: all 0.25s ease;
+
+  &:focus {
+    background: var(--waline-bg-color-light);
+  }
+}
+
 .wl-preview {
   padding: 0 0.5em 0.5em;
 
@@ -196,9 +194,6 @@
   .wl-content {
     min-height: 1.25em;
     padding: 0.25em;
-    border: var(--waline-border);
-    border-radius: 0.25em;
-
     word-break: break-word;
     hyphens: auto;
 
@@ -247,7 +242,7 @@
     color: var(--waline-theme-color);
   }
 
-  &.actived {
+  &.active {
     color: var(--waline-active-color);
   }
 }
@@ -280,7 +275,7 @@
   }
 
   button {
-    margin-left: 0.75em;
+    margin-inline-start: 0.75em;
 
     svg {
       display: block;
@@ -289,5 +284,3 @@
     }
   }
 }
-
-@include emoji.emoji;

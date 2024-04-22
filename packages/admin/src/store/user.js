@@ -14,7 +14,8 @@ export const user = {
   effects: (dispatch) => ({
     async loadUserInfo() {
       const user = await getUserInfo();
-      if (!user) {
+
+      if (!user?.email) {
         return;
       }
       if (window.opener) {
@@ -22,15 +23,24 @@ export const user = {
         const remember = !!localToken;
         const token =
           localToken || window.TOKEN || sessionStorage.getItem('token');
+
         window.opener.postMessage(
           { type: 'userInfo', data: { token, remember, ...user } },
-          '*'
+          '*',
         );
       }
+
       return dispatch.user.setUser(user);
     },
-    async login({ email, password, code, remember }) {
-      const { token, ...user } = await login({ email, password, code });
+    async login({ email, password, code, remember, recaptchaV3, turnstile }) {
+      const { token, ...user } = await login({
+        email,
+        password,
+        code,
+        recaptchaV3,
+        turnstile,
+      });
+
       if (token) {
         window.TOKEN = token;
         sessionStorage.setItem('TOKEN', token);
@@ -40,10 +50,11 @@ export const user = {
         if (window.opener) {
           window.opener.postMessage(
             { type: 'userInfo', data: { token, remember, ...user } },
-            '*'
+            '*',
           );
         }
       }
+
       return dispatch.user.setUser(user);
     },
     logout() {
@@ -62,6 +73,7 @@ export const user = {
       if (window.opener) {
         window.opener.postMessage({ type: 'profile', data }, '*');
       }
+
       return dispatch.user.updateUser(data);
     },
   }),

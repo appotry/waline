@@ -1,58 +1,64 @@
+import { decodePath, isLinkHttp, removeEndingSplash } from './path.js';
 import {
-  defaultLang,
+  DEFAULT_EMOJI,
+  DEFAULT_REACTION,
   defaultUploadImage,
-  defaultTexRenderer,
+  defaultHighlighter,
+  defaultTeXRenderer,
+  getDefaultSearchOptions,
   getMeta,
-  locales,
-} from '../config';
+  getLocale,
+  getLang,
+} from '../config/index.js';
+import {
+  type WalineEmojiInfo,
+  type WalineEmojiMaps,
+  type WalineLocale,
+  type WalineProps,
+} from '../typings/index.js';
 
-import { decodePath, isLinkHttp, removeEndingSplash } from './path';
-import { getEmojis } from './emoji';
-
-import type {
-  WalineEmojiInfo,
-  WalineEmojiMaps,
-  WalineLocale,
-  WalineProps,
-} from '../typings';
-import hanabi from 'hanabi';
-
-export interface EmojiConfig {
+export interface WalineEmojiConfig {
   tabs: Pick<WalineEmojiInfo, 'name' | 'icon' | 'items'>[];
   map: WalineEmojiMaps;
 }
 
-export interface Config
+export interface WalineConfig
   extends Required<
-      Pick<
-        WalineProps,
-        | 'path'
-        | 'lang'
-        | 'meta'
-        | 'pageSize'
-        | 'requiredMeta'
-        | 'imageUploader'
-        | 'highlighter'
-        | 'texRenderer'
-        | 'copyright'
-        | 'login'
-      >
-    >,
-    Pick<WalineProps, 'dark' | 'serverURL'> {
+    Omit<
+      WalineProps,
+      | 'emoji'
+      | 'imageUploader'
+      | 'highlighter'
+      | 'texRenderer'
+      | 'wordLimit'
+      | 'reaction'
+      | 'search'
+    >
+  > {
   locale: WalineLocale;
   wordLimit: [number, number] | false;
-  emoji: Promise<EmojiConfig>;
+  reaction: string[];
+  emoji: Exclude<WalineProps['emoji'], boolean | undefined>;
+  highlighter: Exclude<WalineProps['highlighter'], true | undefined>;
+  imageUploader: Exclude<WalineProps['imageUploader'], true | undefined>;
+  texRenderer: Exclude<WalineProps['texRenderer'], true | undefined>;
+  search: Exclude<WalineProps['search'], true | undefined>;
 }
 
-const getServerURL = (serverURL: string): string => {
+export const getServerURL = (serverURL: string): string => {
   const result = removeEndingSplash(serverURL);
 
   return isLinkHttp(result) ? result : `https://${result}`;
 };
 
+const getWordLimit = (
+  wordLimit: WalineProps['wordLimit'],
+): [number, number] | false =>
+  Array.isArray(wordLimit) ? wordLimit : wordLimit ? [0, wordLimit] : false;
+
 const fallback = <T = unknown>(
-  value: T | false | undefined,
-  fallback: T
+  value: T | boolean | undefined,
+  fallback: T,
 ): T | false =>
   typeof value === 'function' ? value : value === false ? false : fallback;
 
@@ -60,11 +66,12 @@ export const getConfig = ({
   serverURL,
 
   path = location.pathname,
-  lang = defaultLang,
+  lang = typeof navigator === 'undefined' ? 'en-US' : navigator.language,
   locale,
-  emoji = ['https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/weibo'],
+  emoji = DEFAULT_EMOJI,
   meta = ['nick', 'mail', 'link'],
   requiredMeta = [],
+  dark = false,
   pageSize = 10,
   wordLimit,
   imageUploader,
@@ -72,28 +79,44 @@ export const getConfig = ({
   texRenderer,
   copyright = true,
   login = 'enable',
+  search,
+  reaction,
+  recaptchaV3Key = '',
+  turnstileKey = '',
+  commentSorting = 'latest',
   ...more
-}: WalineProps): Config => ({
+}: WalineProps): WalineConfig => ({
   serverURL: getServerURL(serverURL),
   path: decodePath(path),
-  lang,
+  lang: getLang(lang),
   locale: {
-    ...(locales[lang] || locales[defaultLang]),
+    ...getLocale(lang),
     ...(typeof locale === 'object' ? locale : {}),
-  },
-  emoji: getEmojis(emoji),
-  wordLimit: Array.isArray(wordLimit)
-    ? wordLimit
-    : wordLimit
-    ? [0, wordLimit]
-    : false,
+  } as WalineLocale,
+  wordLimit: getWordLimit(wordLimit),
   meta: getMeta(meta),
   requiredMeta: getMeta(requiredMeta),
+  imageUploader: fallback(imageUploader, defaultUploadImage),
+  highlighter: fallback(highlighter, defaultHighlighter),
+  texRenderer: fallback(texRenderer, defaultTeXRenderer),
+  dark,
+  emoji: typeof emoji === 'boolean' ? (emoji ? DEFAULT_EMOJI : []) : emoji,
   pageSize,
   login,
-  imageUploader: fallback(imageUploader, defaultUploadImage),
-  highlighter: fallback(highlighter, hanabi),
-  texRenderer: fallback(texRenderer, defaultTexRenderer),
   copyright,
+  search:
+    search === false
+      ? false
+      : typeof search === 'object'
+        ? search
+        : getDefaultSearchOptions(lang),
+  recaptchaV3Key,
+  turnstileKey,
+  reaction: Array.isArray(reaction)
+    ? reaction
+    : reaction === true
+      ? DEFAULT_REACTION
+      : [],
+  commentSorting,
   ...more,
 });

@@ -2,10 +2,11 @@
 home: true
 title: Waline
 icon: home
+heroText: Waline
 heroImage: /logo.png
 actions:
   - text: 💡 Get Started
-    link: /en/guide/get-started.html
+    link: /en/guide/get-started/
     type: primary
 
   - text: ℹ️ Intro
@@ -15,19 +16,31 @@ actions:
 features:
   - title: Comment the way you like
     icon: markdown
-    details: Full Markdown support, with emoji, mathematical formulas and HTML embedding support
+    details: Full Markdown support, with emojis, math equations, image uploads, and HTML embedding support
+    link: /en/guide/features/syntax.html
 
   - title: LightWeight
     icon: light
-    details: 54kb gzip size of whole client
+    details: Full client size of 53kb gzip
 
   - title: Improved Security
     icon: safe
-    details: Content verification, anti-irrigation, protection of sensitive data, etc.
+    details: Content verification, anti-spamming, protection of sensitive data, and more
+    link: /en/guide/features/safety.html
 
   - title: Login support
     icon: register
-    details: Besides anonymous comments, account registration is supported to maintain identity
+    details: Anonymous comments, account registration and social login are supported
+
+  - title: Article Reaction
+    icon: reaction
+    details: Quickly show your attitude towards the article
+    link: /en/guide/features/reaction.html
+
+  - title: Pageview Counter
+    icon: counter
+    details: Count pageviews accurately with < 1kb code
+    link: /en/guide/features/pageview.html
 
   - title: Completely free
     icon: free
@@ -37,5 +50,5 @@ features:
     icon: strong
     details: Multiple deployment methods and storage service support
 
-footer: GPL-2.0 LICENSE | Copyright © 2020-present <a href="https://github.com/lizheming" rel="noopenner noreferrer " target="_blank">lizheming</a> | Theme by <a href="https://vuepress-theme-hope.github.io/v2/" rel="noopenner noreferrer " target="_blank">vuepress-theme-hope</a>
+footer: GPL-2.0 LICENSE | Copyright © 2020-present <a href="https://github.com/lizheming" rel="noopener noreferrer " target="_blank">lizheming</a> | Theme by <a href="https://vuepress-theme-hope.github.io/v2/" rel="noopener noreferrer " target="_blank">vuepress-theme-hope</a>
 ---

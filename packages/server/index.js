@@ -1,5 +1,6 @@
-const os = require('os');
-const path = require('path');
+const os = require('node:os');
+const path = require('node:path');
+
 const Application = require('thinkjs');
 const Loader = require('thinkjs/lib/loader');
 
@@ -16,6 +17,7 @@ module.exports = function (configParams = {}) {
   });
 
   const loader = new Loader(app.options);
+
   loader.loadAll('worker');
 
   return function (req, res) {
@@ -30,6 +32,7 @@ module.exports = function (configParams = {}) {
       })
       .then(() => {
         const callback = think.app.callback();
+
         return callback(req, res);
       })
       .then(() => {
