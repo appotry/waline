@@ -1,15 +1,24 @@
-/* eslint-disable import-x/no-unresolved */
-import hopeConfig, {
+import {
   config,
   globals,
+  js,
+  jsImport,
+  prettier,
+  ts,
+  tsImport,
   tsParser,
+  vitest,
 } from 'eslint-config-mister-hope';
 import { vue, vueParser } from 'eslint-config-mister-hope/vue';
 import reactRecommended from 'eslint-plugin-react/configs/recommended.js';
 
 export default config(
+  ...js,
+  ...jsImport,
+  ...ts,
+  ...tsImport,
+  vitest,
   ...vue,
-  ...hopeConfig,
   {
     ignores: [
       '**/.vuepress/.cache/**',
@@ -88,14 +97,6 @@ export default config(
     },
   },
 
-  {
-    files: ['**/*.vue'],
-    rules: {
-      // FIXME: Issues with vue files
-      'import-x/no-unresolved': 'off',
-    },
-  },
-
   // @ts-expect-error: react plugin types
   {
     files: ['packages/admin/src/**/*.{js,jsx}'],
@@ -170,4 +171,5 @@ export default config(
       globals: globals.node,
     },
   },
+  prettier,
 );
