@@ -11,12 +11,12 @@ import PageTitle from '@theme-hope/components/PageTitle';
 import { useThemeLocaleData } from '@theme-hope/composables/index';
 import PageMeta from '@theme-hope/modules/info/components/PageMeta';
 import TOC from '@theme-hope/modules/info/components/TOC';
-import { useDarkmode } from '@theme-hope/modules/outlook/composables/index';
+import { useDarkMode } from '@theme-hope/modules/outlook/composables/index';
 import WalineTips from './WalineTips.js';
 
 import type { ThemeNormalPageFrontmatter } from 'vuepress-theme-hope';
 
-import 'vuepress-theme-hope/styles/page.scss';
+import 'vuepress-theme-hope/styles/normal-page.scss';
 
 export default defineComponent({
   name: 'NormalPage',
@@ -34,7 +34,7 @@ export default defineComponent({
 
   setup(_props, { slots }) {
     const frontmatter = usePageFrontmatter<ThemeNormalPageFrontmatter>();
-    const { isDarkmode } = useDarkmode();
+    const { isDarkMode } = useDarkMode();
     const themeLocale = useThemeLocaleData();
 
     const tocEnable = computed(
@@ -90,7 +90,7 @@ export default defineComponent({
             h(WalineTips),
             hasGlobalComponent('CommentService')
               ? h(resolveComponent('CommentService'), {
-                  darkmode: isDarkmode.value,
+                  darkmode: isDarkMode.value,
                 })
               : null,
             slots.bottom?.(),
