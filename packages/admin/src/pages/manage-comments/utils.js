@@ -1,33 +1,31 @@
 import md5 from 'md5';
 
 export const buildAvatar = (email = '', avatar = '') => {
-  if (avatar) return avatar;
-
-  if (typeof email !== 'string') email = '';
-
-  return `https://sdn.geekzu.org/avatar/${md5(email)}?s=40&r=G&d=`;
-};
-
-export const getPostUrl = (url) => (window.SITE_URL || '') + url;
-
-export function formatDate(time) {
-  let d;
-
-  if (typeof time === 'number') {
-    d = new Date(time);
-  } else {
-    d = new Date(
-      /\d+-\d+-\d+\s\d+:\d+:\d+/.test(time) ? time.replace(/-/g, '/') : time,
-    );
+  if (avatar && !String(avatar).startsWith('data:image/svg+xml')) {
+    return avatar;
   }
 
-  const p = (n) => (n < 10 ? '0' + n : n);
-  const localDate = [d.getFullYear(), d.getMonth() + 1, d.getDate()]
-    .map(p)
+  const normalizedEmail = typeof email === 'string' ? email : '';
+
+  return `https://seccdn.libravatar.org/avatar/${md5(normalizedEmail)}`;
+};
+
+export const getPostUrl = (url) => (window.SITE_URL ?? '') + url;
+
+const padZero = (num) => (num < 10 ? `0${num}` : num);
+
+export const formatDate = (time) => {
+  const date =
+    typeof time === 'number'
+      ? new Date(time)
+      : new Date(/\d+-\d+-\d+\s\d+:\d+:\d+/u.test(time) ? time.replaceAll('-', '/') : time);
+
+  const localDate = [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+    .map((item) => padZero(item))
     .join('-');
-  const localTime = [d.getHours(), d.getMinutes(), d.getSeconds()]
-    .map(p)
+  const localTime = [date.getHours(), date.getMinutes(), date.getSeconds()]
+    .map((item) => padZero(item))
     .join(':');
 
-  return localDate + ' ' + localTime;
-}
+  return `${localDate} ${localTime}`;
+};

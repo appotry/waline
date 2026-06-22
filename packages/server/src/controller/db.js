@@ -1,6 +1,6 @@
 const BaseRest = require('./rest.js');
 
-module.exports = class extends BaseRest {
+module.exports = class DBController extends BaseRest {
   async getAction() {
     const exportData = {
       type: 'waline',
@@ -38,15 +38,9 @@ module.exports = class extends BaseRest {
     }
 
     if (storage === 'mysql') {
-      if (item.insertedAt)
-        item.insertedAt = think.datetime(
-          item.insertedAt,
-          'YYYY-MM-DD HH:mm:ss',
-        );
-      if (item.createdAt)
-        item.createdAt = think.datetime(item.createdAt, 'YYYY-MM-DD HH:mm:ss');
-      if (item.updatedAt)
-        item.updatedAt = think.datetime(item.updatedAt, 'YYYY-MM-DD HH:mm:ss');
+      if (item.insertedAt) item.insertedAt = think.datetime(item.insertedAt, 'YYYY-MM-DD HH:mm:ss');
+      if (item.createdAt) item.createdAt = think.datetime(item.createdAt, 'YYYY-MM-DD HH:mm:ss');
+      if (item.updatedAt) item.updatedAt = think.datetime(item.updatedAt, 'YYYY-MM-DD HH:mm:ss');
     }
 
     delete item.objectId;

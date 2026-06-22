@@ -27,14 +27,14 @@ module.exports = class extends Base {
       collections[tableName] = true;
 
       return db.collection(tableName);
-    } catch (e) {
-      if (e.code === 'DATABASE_COLLECTION_NOT_EXIST') {
+    } catch (err) {
+      if (err.code === 'DATABASE_COLLECTION_NOT_EXIST') {
         await db.createCollection(tableName);
         collections[tableName] = true;
 
         return db.collection(tableName);
       }
-      throw e;
+      throw err;
     }
   }
 
@@ -46,10 +46,11 @@ module.exports = class extends Base {
     const filter = {};
     const parseKey = (k) => (k === 'objectId' ? '_id' : k);
 
-    for (let k in where) {
+    for (const k in where) {
       if (k === '_complex') {
         continue;
       }
+
       if (think.isString(where[k])) {
         filter[parseKey(k)] = _.eq(where[k]);
         continue;
@@ -57,40 +58,46 @@ module.exports = class extends Base {
       if (where[k] === undefined) {
         filter[parseKey(k)] = _.eq(null);
       }
-      if (Array.isArray(where[k])) {
-        if (where[k][0]) {
-          const handler = where[k][0].toUpperCase();
 
-          switch (handler) {
-            case 'IN':
-              filter[parseKey(k)] = _.in(where[k][1]);
-              break;
-            case 'NOT IN':
-              filter[parseKey(k)] = _.nin(where[k][1]);
-              break;
-            case 'LIKE': {
-              const first = where[k][1][0];
-              const last = where[k][1].slice(-1);
-              let reg;
+      if (Array.isArray(where[k]) && where[k][0]) {
+        const handler = where[k][0].toUpperCase();
 
-              if (first === '%' && last === '%') {
-                reg = new RegExp(where[k][1].slice(1, -1));
-              } else if (first === '%') {
-                reg = new RegExp(where[k][1].slice(1) + '$');
-              } else if (last === '%') {
-                reg = new RegExp('^' + where[k][1].slice(0, -1));
-              }
-              filter[parseKey(k)] = reg;
-              break;
+        switch (handler) {
+          case 'IN': {
+            filter[parseKey(k)] = _.in(where[k][1]);
+            break;
+          }
+          case 'NOT IN': {
+            filter[parseKey(k)] = _.nin(where[k][1]);
+            break;
+          }
+          case 'LIKE': {
+            const [, likePattern] = where[k];
+            const [first] = likePattern;
+            const last = likePattern.slice(-1);
+            let reg;
+
+            if (first === '%' && last === '%') {
+              reg = new RegExp(likePattern.slice(1, -1), 'u');
+            } else if (first === '%') {
+              reg = new RegExp(`${likePattern.slice(1)}$`, 'u');
+            } else if (last === '%') {
+              reg = new RegExp(`^${likePattern.slice(0, -1)}`, 'u');
             }
-            case '!=': {
-              filter[parseKey(k)] = _.neq(where[k][1]);
-              break;
-            }
-            case '>': {
-              filter[parseKey(k)] = _.gt(where[k][1]);
-              break;
-            }
+
+            filter[parseKey(k)] = reg;
+            break;
+          }
+          case '!=': {
+            filter[parseKey(k)] = _.neq(where[k][1]);
+            break;
+          }
+          case '>': {
+            filter[parseKey(k)] = _.gt(where[k][1]);
+            break;
+          }
+          default: {
+            break;
           }
         }
       }
@@ -112,6 +119,7 @@ module.exports = class extends Base {
       if (k === '_logic') {
         continue;
       }
+
       filters.push({
         ...this.parseWhere({ [k]: where._complex[k] }),
         ...filter,
@@ -128,12 +136,15 @@ module.exports = class extends Base {
     if (desc) {
       instance = instance.orderBy(desc, 'desc');
     }
+
     if (limit) {
       instance = instance.limit(limit);
     }
+
     if (offset) {
       instance = instance.skip(offset);
     }
+
     if (field) {
       const filedObj = {};
 
@@ -150,14 +161,15 @@ module.exports = class extends Base {
   }
 
   async select(where, options = {}) {
-    let data = [];
+    const data = [];
     let ret = [];
-    let offset = options.offset || 0;
+    const offset = options.offset ?? 0;
 
     do {
       options.offset = offset + data.length;
+      // oxlint-disable-next-line no-underscore-dangle
       ret = await this._select(where, options);
-      data = data.concat(ret);
+      data.push(...ret);
     } while (ret.length === 100);
 
     return data;
@@ -173,6 +185,7 @@ module.exports = class extends Base {
       return total;
     }
 
+    // oxlint-disable-next-line no-underscore-dangle
     const _id = {};
 
     group.forEach((f) => {
@@ -188,6 +201,7 @@ module.exports = class extends Base {
 
   async add(data) {
     if (data.objectId) {
+      // oxlint-disable-next-line no-underscore-dangle
       data._id = data.objectId;
       delete data.objectId;
     }
@@ -207,6 +221,7 @@ module.exports = class extends Base {
         const updateData = typeof data === 'function' ? data(item) : data;
         const instance = await this.collection(this.tableName);
 
+        // oxlint-disable-next-line no-underscore-dangle
         await instance.doc(item._id).update(updateData);
 
         return { ...item, ...updateData };

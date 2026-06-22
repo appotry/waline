@@ -1,0 +1,26 @@
+{
+  "name": "waline-vercel-test",
+  "env": {
+    "NODE_OPTIONS": "--experimental-require-module"
+  },
+  "builds": [
+    {
+      "src": "index.cjs",
+      "use": "@vercel/node",
+      "config": {
+        "helpers": false,
+        "includeFiles": [
+          "../../../node_modules/@mathjax/mathjax-newcm-font/**/*",
+          "../../../node_modules/mhchemparser/**/*",
+          "../../../node_modules/ip2region/data/**"
+        ]
+      }
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "index.cjs"
+    }
+  ]
+}

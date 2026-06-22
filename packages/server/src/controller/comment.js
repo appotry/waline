@@ -1,22 +1,21 @@
 const BaseRest = require('./rest.js');
-const akismet = require('../service/akismet.js');
 const { getMarkdownParser } = require('../service/markdown/index.js');
 
-const markdownParser = getMarkdownParser();
+const markdownParser = getMarkdownParser(think.config('markdown'));
 
-async function formatCmt(
+const formatCmt = async (
   { ua, ip, ...comment },
-  users = [],
   { avatarProxy, deprecated },
   loginUser,
-) {
+  users = [],
+) => {
   ua = think.uaParser(ua);
   if (!think.config('disableUserAgent')) {
     comment.browser = `${ua.browser.name || ''}${(ua.browser.version || '')
       .split('.')
       .slice(0, 2)
       .join('.')}`;
-    comment.os = [ua.os.name, ua.os.version].filter((v) => v).join(' ');
+    comment.os = [ua.os.name, ua.os.version].filter(Boolean).join(' ');
   }
 
   const user = users.find(({ objectId }) => comment.user_id === objectId);
@@ -29,13 +28,11 @@ async function formatCmt(
     comment.label = user.label;
   }
 
-  const avatarUrl = user?.avatar
-    ? user.avatar
-    : await think.service('avatar').stringify(comment);
+  const avatarUrl = user?.avatar || (await think.service('avatar').stringify(comment));
 
   comment.avatar =
     avatarProxy && !avatarUrl.includes(avatarProxy)
-      ? avatarProxy + '?url=' + encodeURIComponent(avatarUrl)
+      ? `${avatarProxy}?url=${encodeURIComponent(avatarUrl)}`
       : avatarUrl;
 
   const isAdmin = loginUser && loginUser.type === 'administrator';
@@ -43,16 +40,18 @@ async function formatCmt(
   if (loginUser) {
     comment.orig = comment.comment;
   }
-  if (!isAdmin) {
-    delete comment.mail;
-  } else {
+
+  if (isAdmin) {
     comment.ip = ip;
+  } else {
+    delete comment.mail;
   }
 
   // administrator can always show region
   if (isAdmin || !think.config('disableRegion')) {
     comment.addr = await think.ip2region(ip, { depth: isAdmin ? 3 : 1 });
   }
+
   comment.comment = markdownParser(comment.comment);
   comment.like = Number(comment.like) || 0;
 
@@ -65,13 +64,14 @@ async function formatCmt(
   if (!deprecated) {
     delete comment.insertedAt;
   }
+
   delete comment.createdAt;
   delete comment.updatedAt;
 
   return comment;
-}
+};
 
-module.exports = class extends BaseRest {
+module.exports = class CommentController extends BaseRest {
   constructor(ctx) {
     super(ctx);
     this.modelInstance = this.getModel('Comment');
@@ -81,12 +81,12 @@ module.exports = class extends BaseRest {
     const { type } = this.get();
 
     const fnMap = {
-      recent: this.getRecentCommentList,
-      count: this.getCommentCount,
-      list: this.getAdminCommentList,
+      recent: this['getRecentCommentList'],
+      count: this['getCommentCount'],
+      list: this['getAdminCommentList'],
     };
 
-    const fn = fnMap[type] || this.getCommentList;
+    const fn = fnMap[type] || this['getCommentList'];
     const data = await fn.call(this);
 
     return this.jsonOrSuccess(data);
@@ -111,7 +111,7 @@ module.exports = class extends BaseRest {
     };
 
     if (pid && this.ctx.state.deprecated) {
-      data.comment = `[@${at}](#${pid}): ` + data.comment;
+      data.comment = `[@${at}](#${pid}): ${data.comment}`;
     }
 
     think.logger.debug('Post Comment initial Data:', data);
@@ -124,7 +124,7 @@ module.exports = class extends BaseRest {
 
       if (
         think.isArray(disallowIPList) &&
-        disallowIPList.length &&
+        disallowIPList.length > 0 &&
         disallowIPList.includes(data.ip)
       ) {
         think.logger.debug(`Comment IP ${data.ip} is in disallowIPList`);
@@ -144,9 +144,7 @@ module.exports = class extends BaseRest {
       });
 
       if (!think.isEmpty(duplicate)) {
-        think.logger.debug(
-          'The comment author had post same comment content before',
-        );
+        think.logger.debug('The comment author had post same comment content before');
 
         return this.fail(this.locale('Duplicate Content'));
       }
@@ -175,9 +173,11 @@ module.exports = class extends BaseRest {
       think.logger.debug(`Comment initial status is ${data.status}`);
 
       if (data.status === 'approved') {
-        const spam = await akismet(data, this.ctx.serverURL).catch((e) =>
-          console.log(e),
-        ); // ignore akismet error
+        const spam = await this.service('akismet', this.ctx.serverURL)
+          .check(data)
+          .catch((err) => {
+            console.log(err);
+          }); // ignore akismet error
 
         if (spam === true) {
           data.status = 'spam';
@@ -191,7 +191,7 @@ module.exports = class extends BaseRest {
         const { forbiddenWords } = this.config();
 
         if (!think.isEmpty(forbiddenWords)) {
-          const regexp = new RegExp('(' + forbiddenWords.join('|') + ')', 'ig');
+          const regexp = new RegExp(`(${forbiddenWords.join('|')})`, 'igu');
 
           if (regexp.test(comment)) {
             data.status = 'spam';
@@ -221,12 +221,12 @@ module.exports = class extends BaseRest {
 
     if (pid) {
       parentComment = await this.modelInstance.select({ objectId: pid });
-      parentComment = parentComment[0];
+      [parentComment] = parentComment;
       if (parentComment.user_id) {
         parentUser = await this.getModel('Users').select({
           objectId: parentComment.user_id,
         });
-        parentUser = parentUser[0];
+        [parentUser] = parentUser;
       }
     }
 
@@ -237,16 +237,16 @@ module.exports = class extends BaseRest {
 
     const cmtReturn = await formatCmt(
       resp,
-      [userInfo],
       { ...this.config(), deprecated: this.ctx.state.deprecated },
       userInfo,
+      [userInfo],
     );
     const parentReturn = parentComment
       ? await formatCmt(
           parentComment,
-          parentUser ? [parentUser] : [],
           { ...this.config(), deprecated: this.ctx.state.deprecated },
           userInfo,
+          parentUser ? [parentUser] : [],
         )
       : undefined;
 
@@ -255,9 +255,7 @@ module.exports = class extends BaseRest {
 
       await notify.run(
         { ...cmtReturn, mail: resp.mail, rawComment: comment },
-        parentReturn
-          ? { ...parentReturn, mail: parentComment.mail }
-          : undefined,
+        parentReturn ? { ...parentReturn, mail: parentComment.mail } : undefined,
       );
     }
 
@@ -268,32 +266,28 @@ module.exports = class extends BaseRest {
     think.logger.debug(`Comment post hooks postSave done!`);
 
     return this.success(
-      await formatCmt(
-        resp,
-        [userInfo],
-        { ...this.config(), deprecated: this.ctx.state.deprecated },
+      await formatCmt(resp, { ...this.config(), deprecated: this.ctx.state.deprecated }, userInfo, [
         userInfo,
-      ),
+      ]),
     );
   }
 
   async putAction() {
     const { userInfo } = this.ctx.state;
     const isAdmin = userInfo.type === 'administrator';
-    let data = isAdmin ? this.post() : this.post('comment,like');
+    const data = isAdmin ? this.post() : this.post('comment,like');
     let oldData = await this.modelInstance.select({ objectId: this.id });
 
     if (think.isEmpty(oldData) || think.isEmpty(data)) {
       return this.success();
     }
 
-    oldData = oldData[0];
+    [oldData] = oldData;
     if (think.isBoolean(data.like)) {
       const likeIncMax = this.config('LIKE_INC_MAX') || 1;
 
       data.like =
-        (Number(oldData.like) || 0) +
-        (data.like ? Math.ceil(Math.random() * likeIncMax) : -1);
+        (Number(oldData.like) || 0) + (data.like ? Math.ceil(Math.random() * likeIncMax) : -1);
       data.like = Math.max(data.like, 0);
     }
 
@@ -316,25 +310,21 @@ module.exports = class extends BaseRest {
       cmtUser = await this.getModel('Users').select({
         objectId: newData[0].user_id,
       });
-      cmtUser = cmtUser[0];
+      [cmtUser] = cmtUser;
     }
     const cmtReturn = await formatCmt(
       newData[0],
-      cmtUser ? [cmtUser] : [],
       { ...this.config(), deprecated: this.ctx.state.deprecated },
       userInfo,
+      cmtUser ? [cmtUser] : [],
     );
 
-    if (
-      oldData.status === 'waiting' &&
-      data.status === 'approved' &&
-      oldData.pid
-    ) {
+    if (oldData.status === 'waiting' && data.status === 'approved' && oldData.pid) {
       let pComment = await this.modelInstance.select({
         objectId: oldData.pid,
       });
 
-      pComment = pComment[0];
+      [pComment] = pComment;
 
       let pUser;
 
@@ -342,15 +332,15 @@ module.exports = class extends BaseRest {
         pUser = await this.getModel('Users').select({
           objectId: pComment.user_id,
         });
-        pUser = pUser[0];
+        [pUser] = pUser;
       }
 
       const notify = this.service('notify', this);
       const pcmtReturn = await formatCmt(
         pComment,
-        pUser ? [pUser] : [],
         { ...this.config(), deprecated: this.ctx.state.deprecated },
         userInfo,
+        pUser ? [pUser] : [],
       );
 
       await notify.run(
@@ -390,7 +380,7 @@ module.exports = class extends BaseRest {
     const { path: url, page, pageSize, sortBy } = this.get();
     const where = { url };
 
-    if (think.isEmpty(userInfo) || this.config('storage') === 'deta') {
+    if (think.isEmpty(userInfo)) {
       where.status = ['NOT IN', ['waiting', 'spam']];
     } else if (userInfo.type !== 'administrator') {
       where._complex = {
@@ -434,21 +424,18 @@ module.exports = class extends BaseRest {
     }
 
     /**
-     * most of case we have just little comments
-     * while if we want get rootComments, rootCount, childComments with pagination
-     * we have to query three times from storage service
-     * That's so expensive for user, especially in the serverless.
-     * so we have a comments length check
-     * If you have less than 1000 comments, then we'll get all comments one time
-     * then we'll compute rootComment, rootCount, childComments in program to reduce http request query
+     * Most of case we have just little comments while if we want get rootComments, rootCount,
+     * childComments with pagination we have to query three times from storage service That's so
+     * expensive for user, especially in the serverless. so we have a comments length check If you
+     * have less than 1000 comments, then we'll get all comments one time then we'll compute
+     * rootComment, rootCount, childComments in program to reduce http request query
      *
-     * Why we have limit and the limit is 1000?
-     * Many serverless storages have fetch data limit, for example LeanCloud is 100, and CloudBase is 1000
-     * If we have much comments, We should use more request to fetch all comments
-     * If we have 3000 comments, We have to use 30 http request to fetch comments, things go athwart.
-     * And Serverless Service like vercel have execute time limit
-     * if we have more http requests in a serverless function, it may timeout easily.
-     * so we use limit to avoid it.
+     * Why we have limit and the limit is 1000? Many serverless storages have fetch data limit, for
+     * example LeanCloud is 100, and CloudBase is 1000 If we have much comments, We should use more
+     * request to fetch all comments If we have 3000 comments, We have to use 30 http request to
+     * fetch comments, things go athwart. And Serverless Service like vercel have execute time limit
+     * if we have more http requests in a serverless function, it may timeout easily. so we use
+     * limit to avoid it.
      */
     if (totalCount < 1000) {
       comments = await this.modelInstance.select(where, selectOptions);
@@ -462,9 +449,7 @@ module.exports = class extends BaseRest {
       rootComments.forEach(({ objectId }) => {
         rootIds[objectId] = true;
       });
-      comments = comments.filter(
-        (cmt) => rootIds[cmt.objectId] || rootIds[cmt.rid],
-      );
+      comments = comments.filter((cmt) => rootIds[cmt.objectId] || rootIds[cmt.rid]);
     } else {
       comments = await this.modelInstance.select(
         { ...where, rid: undefined },
@@ -488,12 +473,10 @@ module.exports = class extends BaseRest {
     }
 
     const userModel = this.getModel('Users');
-    const user_ids = Array.from(
-      new Set(comments.map(({ user_id }) => user_id).filter((v) => v)),
-    );
+    const user_ids = [...new Set(comments.map(({ user_id }) => user_id).filter(Boolean))];
     let users = [];
 
-    if (user_ids.length) {
+    if (user_ids.length > 0) {
       users = await userModel.select(
         { objectId: ['IN', user_ids] },
         {
@@ -508,21 +491,22 @@ module.exports = class extends BaseRest {
         _complex: {},
       };
 
-      if (user_ids.length) {
+      if (user_ids.length > 0) {
         countWhere._complex.user_id = ['IN', user_ids];
       }
-      const mails = Array.from(
-        new Set(comments.map(({ mail }) => mail).filter((v) => v)),
-      );
 
-      if (mails.length) {
+      const mails = [...new Set(comments.map(({ mail }) => mail).filter(Boolean))];
+
+      if (mails.length > 0) {
         countWhere._complex.mail = ['IN', mails];
       }
-      if (!think.isEmpty(countWhere._complex)) {
-        countWhere._complex._logic = 'or';
-      } else {
+
+      if (think.isEmpty(countWhere._complex)) {
         delete countWhere._complex;
+      } else {
+        countWhere._complex._logic = 'or';
       }
+
       const counts = await this.modelInstance.count(countWhere, {
         group: ['user_id', 'mail'],
       });
@@ -545,9 +529,9 @@ module.exports = class extends BaseRest {
         rootComments.map(async (comment) => {
           const cmt = await formatCmt(
             comment,
-            users,
             { ...this.config(), deprecated: this.ctx.state.deprecated },
             userInfo,
+            users,
           );
 
           cmt.children = await Promise.all(
@@ -556,31 +540,30 @@ module.exports = class extends BaseRest {
               .map((cmt) =>
                 formatCmt(
                   cmt,
-                  users,
                   {
                     ...this.config(),
                     deprecated: this.ctx.state.deprecated,
                   },
                   userInfo,
+                  users,
                 ),
               )
               .reverse(),
           );
 
-          const childCommentsMap = new Map();
+          const childCommentsMap = new Map([[cmt.objectId, cmt]]);
 
-          childCommentsMap.set(cmt.objectId, cmt);
-          cmt.children.forEach((c) => childCommentsMap.set(c.objectId, c));
+          cmt.children.forEach((child) => childCommentsMap.set(child.objectId, child));
 
-          cmt.children.forEach((c) => {
-            const parent = childCommentsMap.get(c.pid);
+          cmt.children.forEach((child) => {
+            const parent = childCommentsMap.get(child.pid);
 
             // fix https://github.com/walinejs/waline/issues/2518 avoid some abnormal comment data
             if (!parent) {
               return;
             }
 
-            c.reply_user = {
+            child.reply_user = {
               nick: parent?.nick,
               link: parent?.link,
               avatar: parent?.avatar,
@@ -629,13 +612,11 @@ module.exports = class extends BaseRest {
     });
 
     const userModel = this.getModel('Users');
-    const user_ids = Array.from(
-      new Set(comments.map(({ user_id }) => user_id).filter((v) => v)),
-    );
+    const user_ids = [...new Set(comments.map(({ user_id }) => user_id).filter(Boolean))];
 
     let users = [];
 
-    if (user_ids.length) {
+    if (user_ids.length > 0) {
       users = await userModel.select(
         { objectId: ['IN', user_ids] },
         {
@@ -654,9 +635,9 @@ module.exports = class extends BaseRest {
         comments.map((cmt) =>
           formatCmt(
             cmt,
-            users,
             { ...this.config(), deprecated: this.ctx.state.deprecated },
             userInfo,
+            users,
           ),
         ),
       ),
@@ -668,7 +649,7 @@ module.exports = class extends BaseRest {
     const { userInfo } = this.ctx.state;
     const where = {};
 
-    if (think.isEmpty(userInfo) || this.config('storage') === 'deta') {
+    if (think.isEmpty(userInfo)) {
       where.status = ['NOT IN', ['waiting', 'spam']];
     } else {
       where._complex = {
@@ -700,13 +681,11 @@ module.exports = class extends BaseRest {
     });
 
     const userModel = this.getModel('Users');
-    const user_ids = Array.from(
-      new Set(comments.map(({ user_id }) => user_id).filter((v) => v)),
-    );
+    const user_ids = [...new Set(comments.map(({ user_id }) => user_id).filter(Boolean))];
 
     let users = [];
 
-    if (user_ids.length) {
+    if (user_ids.length > 0) {
       users = await userModel.select(
         { objectId: ['IN', user_ids] },
         {
@@ -719,9 +698,9 @@ module.exports = class extends BaseRest {
       comments.map((cmt) =>
         formatCmt(
           cmt,
-          users,
           { ...this.config(), deprecated: this.ctx.state.deprecated },
           userInfo,
+          users,
         ),
       ),
     );
@@ -730,9 +709,9 @@ module.exports = class extends BaseRest {
   async getCommentCount() {
     const { url } = this.get();
     const { userInfo } = this.ctx.state;
-    const where = Array.isArray(url) && url.length ? { url: ['IN', url] } : {};
+    const where = Array.isArray(url) && url.length > 0 ? { url: ['IN', url] } : {};
 
-    if (think.isEmpty(userInfo) || this.config('storage') === 'deta') {
+    if (think.isEmpty(userInfo)) {
       where.status = ['NOT IN', ['waiting', 'spam']];
     } else {
       where._complex = {

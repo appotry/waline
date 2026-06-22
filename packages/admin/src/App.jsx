@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Provider, useSelector } from 'react-redux';
-import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { Route, BrowserRouter as Router, Routes } from 'react-router';
 
 import Forgot from './pages/forgot/index.jsx';
 import Login from './pages/login/index.jsx';
@@ -11,33 +11,34 @@ import Register from './pages/register/index.jsx';
 import User from './pages/user/index.jsx';
 import { store } from './store/index.js';
 
-function Access(props) {
+const Access = (props) => {
   const user = useSelector((state) => state.user);
 
   useEffect(() => {
-    const meta = props.meta || {};
-    const basename = props.basename || '';
-    const emptyUser = !user?.email;
+    const meta = props.meta ?? {};
+    const basename = props.basename ?? '';
+    const emptyUser = !user?.objectId;
+    const currentPath = location.pathname.replace(basename, '') || '/';
+    const redirectPath = currentPath.startsWith('/') ? currentPath : `/${currentPath}`;
 
     if (emptyUser) {
-      return (location.href =
-        basename +
-        '/ui/login?redirect=' +
-        location.pathname.replace(basename, ''));
+      location.href = `${basename}/ui/login?redirect=${redirectPath}`;
+      return;
     }
 
-    const noPermission = meta.auth ? props.meta.auth !== user.type : false;
+    const noPermission = meta.auth ? meta.auth !== user.type : false;
 
     if (noPermission) {
-      return (location.href = basename + '/ui/profile');
+      location.href = `${basename}/ui/profile`;
+      return;
     }
-  }, [user, props.meta]);
+  }, [user, props.meta, props.basename]);
 
   return user ? props.children : null;
-}
+};
 
-export default function () {
-  const match = location.pathname.match(/(.*?)\/ui/);
+export default function App() {
+  const match = location.pathname.match(/(.*?)\/ui/u);
   const basePath = match ? match[1] : '/';
 
   return (

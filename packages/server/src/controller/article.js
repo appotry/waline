@@ -11,14 +11,14 @@ module.exports = class extends BaseRest {
     const { deprecated } = this.ctx.state;
 
     // path is required
-    if (!Array.isArray(path) || !path.length) {
+    if (!Array.isArray(path) || path.length === 0) {
       return this.jsonOrSuccess(0);
     }
 
     const resp = await this.modelInstance.select({ url: ['IN', path] });
 
     if (think.isEmpty(resp)) {
-      const counters = new Array(path.length).fill(
+      const counters = Array.from({ length: path.length }, () =>
         type.length === 1 && deprecated
           ? 0
           : type.reduce((o, field) => {
@@ -38,9 +38,7 @@ module.exports = class extends BaseRest {
       //   - single path and multiple type: [{[type]: 0}]
       //   - multiple path and single type: [{[type]: 0}]
       //   - multiple path and multiple type: [{[type]: 0}]
-      return this.jsonOrSuccess(
-        path.length === 1 && deprecated ? counters[0] : counters,
-      );
+      return this.jsonOrSuccess(path.length === 1 && deprecated ? counters[0] : counters);
     }
 
     const respObj = resp.reduce((o, n) => {
@@ -55,12 +53,13 @@ module.exports = class extends BaseRest {
       let counters = {};
 
       for (const field of type) {
-        counters[field] = respObj[url]?.[field] ? respObj[url][field] : 0;
+        counters[field] = respObj[url]?.[field] || 0;
       }
 
       if (type.length === 1 && deprecated) {
         counters = counters[type[0]];
       }
+
       data.push(counters);
     }
 
@@ -84,22 +83,17 @@ module.exports = class extends BaseRest {
         { access: { read: true, write: true } },
       );
 
-      return this.jsonOrSuccess(deprecated ? count : [count]);
+      return this.jsonOrSuccess(deprecated ? count : [{ [type]: count }]);
     }
 
     const ret = await this.modelInstance.update(
       (counter) => ({
-        [type]:
-          action === 'desc'
-            ? (counter[type] || 1) - 1
-            : (counter[type] || 0) + 1,
+        [type]: action === 'desc' ? (counter[type] || 1) - 1 : (counter[type] || 0) + 1,
         updatedAt: new Date(),
       }),
       { objectId: ['IN', resp.map(({ objectId }) => objectId)] },
     );
 
-    return this.jsonOrSuccess(
-      deprecated ? ret[0][type] : [{ [type]: ret[0][type] }],
-    );
+    return this.jsonOrSuccess(deprecated ? ret[0][type] : [{ [type]: ret[0][type] }]);
   }
 };

@@ -3,13 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 
-import {
-  gen2FAToken,
-  get2FAToken,
-  updateProfile,
-} from '../../services/user.js';
+import { gen2FAToken, get2FAToken, updateProfile } from '../../services/user.js';
 
-export default function () {
+export default function TwoFactorAuth() {
   const { t } = useTranslation();
   const [step, setStep] = useState(1);
   const [updating, setUpdating] = useState(false);
@@ -20,20 +16,22 @@ export default function () {
     get2FAToken().then(setData);
   }, []);
 
-  const on2faUpdate = async (e) => {
-    e.preventDefault();
+  const on2faUpdate = async (event) => {
+    event.preventDefault();
 
-    const code = e.target.code.value;
+    const code = event.target.code.value;
 
     if (!code || code.length < 6 || code.length > 6) {
-      return alert(t('minimum 6 characters required'));
+      alert(t('minimum 6 characters required'));
+
+      return;
     }
 
     try {
       setUpdating(true);
       await gen2FAToken({ code, secret: data.secret });
-    } catch (e) {
-      alert(e);
+    } catch (err) {
+      alert(err);
     } finally {
       setUpdating(false);
       location.reload();
@@ -46,9 +44,10 @@ export default function () {
     }
 
     setUpdating(true);
-    await updateProfile({ ['2fa']: '' }).catch((reason) => {
-      alert(reason);
-      console.error(reason);
+    await updateProfile({ '2fa': '' }).catch((err) => {
+      alert(err);
+      // oxlint-disable-next-line no-console
+      console.error(err);
     });
     setUpdating(false);
     location.reload();
@@ -63,12 +62,7 @@ export default function () {
           <QRCodeSVG value={data.otpauth_url} size={256} />
           <br />
           <br />
-          <button
-            className="btn primary"
-            type="submit"
-            onClick={close2FA}
-            disabled={updating}
-          >
+          <button className="btn primary" type="submit" onClick={close2FA} disabled={updating}>
             {t('disable 2fa')}
           </button>
         </div>
@@ -77,7 +71,7 @@ export default function () {
         <div>
           <p>{t('2fa description 1')}</p>
           <p>{t('2fa description 2')}</p>
-          <button className="btn primary" onClick={() => setStep(2)}>
+          <button className="btn primary" type="button" onClick={() => setStep(2)}>
             {t('next step')}
           </button>
         </div>
@@ -95,10 +89,7 @@ export default function () {
             </li>
             <li>
               For Android and iOS:
-              <a href="http://guide.duosecurity.com/third-party-accounts">
-                {' '}
-                Duo Mobile
-              </a>
+              <a href="http://guide.duosecurity.com/third-party-accounts"> Duo Mobile</a>
             </li>
             <li>
               For Windows Phone:
@@ -108,11 +99,7 @@ export default function () {
               </a>
             </li>
           </ul>
-          <button
-            className="btn primary"
-            type="submit"
-            onClick={() => setStep(3)}
-          >
+          <button className="btn primary" type="submit" onClick={() => setStep(3)}>
             {t('next step')}
           </button>
         </div>
@@ -128,16 +115,12 @@ export default function () {
                   {t('input 2fa code')}
                 </label>
                 <input id="code-0-1" name="code" type="text" className="text" />
-                <p className="description"></p>
+                <p className="description" />
               </li>
             </ul>
             <ul className="typecho-option typecho-option-submit">
               <li>
-                <button
-                  type="submit"
-                  className="btn primary"
-                  disabled={updating}
-                >
+                <button type="submit" className="btn primary" disabled={updating}>
                   {t('enable 2fa')}
                 </button>
               </li>

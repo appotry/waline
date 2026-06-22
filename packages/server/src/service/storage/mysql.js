@@ -25,9 +25,10 @@ module.exports = class extends Base {
       }
 
       if (Array.isArray(filter[k])) {
-        if (filter[k][0] === 'IN' && !filter[k][1].length) {
+        if (filter[k][0] === 'IN' && filter[k][1].length === 0) {
           continue;
         }
+
         if (think.isDate(filter[k][1])) {
           filter[k][1] = think.datetime(filter[k][1]);
         }
@@ -46,9 +47,11 @@ module.exports = class extends Base {
     if (desc) {
       instance.order({ [desc]: 'DESC' });
     }
+
     if (limit || offset) {
-      instance.limit(offset || 0, limit);
+      instance.limit(offset ?? 0, limit);
     }
+
     if (field) {
       field.push('id');
       instance.field(field);
@@ -80,8 +83,8 @@ module.exports = class extends Base {
     }
     const date = new Date();
 
-    if (!data.createdAt) data.createdAt = date;
-    if (!data.updatedAt) data.updatedAt = date;
+    data.createdAt ??= date;
+    data.updatedAt ??= date;
 
     const instance = this.model(this.tableName);
     const id = await instance.add(data);
@@ -90,17 +93,13 @@ module.exports = class extends Base {
   }
 
   async update(data, where) {
-    const list = await this.model(this.tableName)
-      .where(this.parseWhere(where))
-      .select();
+    const list = await this.model(this.tableName).where(this.parseWhere(where)).select();
 
     return Promise.all(
       list.map(async (item) => {
         const updateData = typeof data === 'function' ? data(item) : data;
 
-        await this.model(this.tableName)
-          .where({ id: item.id })
-          .update(updateData);
+        await this.model(this.tableName).where({ id: item.id }).update(updateData);
 
         return { ...item, ...updateData };
       }),
@@ -116,8 +115,6 @@ module.exports = class extends Base {
   async setSeqId(id) {
     const instance = this.model(this.tableName);
 
-    return instance.query(
-      `ALTER TABLE ${instance.tableName} AUTO_INCREMENT = ${id};`,
-    );
+    return instance.query(`ALTER TABLE ${instance.tableName} AUTO_INCREMENT = ${id};`);
   }
 };

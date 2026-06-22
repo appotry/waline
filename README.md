@@ -29,17 +29,18 @@ A simple comment system with backend support.
 - Deploy free!
 - Multiple deployment and storage service support, at least 243 deployment choice!
 
-|                                                 | Waline                              |                                    |
-| ----------------------------------------------- | ----------------------------------- | ---------------------------------- |
-| **Client**                                      | **Server**                          | **Storage**                        |
-| [@waline/client](https://waline.js.org)         | [Vercel](https://vercel.com)        | [LeanCloud](https://leancloud.app) |
-| [MiniValine](https://minivaline.js.org/)        | [CloudBase](https://cloudbase.net/) | [CloudBase](https://clodbase.net)  |
-| [sodesu](https://github.com/BeiyanYunyi/sodesu) | [Railway](https://railway.app)      | [MongoDB](https://mongodb.com)     |
-|                                                 | [Render](https://render.com)        | MySQL                              |
-|                                                 | [Zeabur](https://zeabur.com)        | SQLite                             |
-|                                                 | [Netlify](https://netlify.com)      | [GitHub](https://github.com)       |
-|                                                 | Docker                              | PostgreSQL                         |
-|                                                 | self host                           | [TiDB](https://tidbcloud.com/)     |
+- |                                                 | Waline                                                              |                                   |
+  | ----------------------------------------------- | ------------------------------------------------------------------- | --------------------------------- |
+  | **Client**                                      | **Server**                                                          | **Storage**                       |
+  | [@waline/client](https://waline.js.org)         | [Vercel](https://vercel.com)                                        | PostgreSQL                        |
+  | [MiniValine](https://minivaline.js.org/)        | [CloudBase](https://cloudbase.net/)                                 | MySQL                             |
+  | [sodesu](https://github.com/BeiyanYunyi/sodesu) | [Railway](https://railway.app)                                      | SQLite                            |
+  |                                                 | [Render](https://render.com)                                        | [TiDB](https://tidbcloud.com/)    |
+  |                                                 | [Zeabur](https://zeabur.com)                                        | [MongoDB](https://mongodb.com)    |
+  |                                                 | [Netlify](https://netlify.com)                                      | [CloudBase](https://clodbase.net) |
+  |                                                 | [Alibaba Cloud ComputeNest](https://computenest.console.aliyun.com) | [GitHub](https://github.com)      |
+  |                                                 | Docker                                                              |                                   |
+  |                                                 | self host                                                           |                                   |
 
 ## Todo
 
@@ -74,6 +75,16 @@ You can contact me through [discussions](https://github.com/walinejs/waline/disc
 <a href="https://qm.qq.com/cgi-bin/qm/qr?k=rPZvq_EBfwQa6QZX7sToVlhH49c6ed0R&jump_from=webapi" target="_blank">
   <img src="./assets/qqgroup.jpg" width="300" alt="qq group qrcode" />
 </a>
+
+## Contributors
+
+Your contributions enrich the open-source community, fostering learning, inspiration, and innovation. We deeply value your involvement. Thank you for being a vital part of our community! 🥰
+
+[![Contributors](https://contrib.rocks/image?repo=walinejs/waline)](https://github.com/walinejs/waline/graphs/contributors)
+
+## Stargazers over time
+
+[![Stargazers over time](https://starchart.cc/walinejs/waline.svg?background=%23ffffff&axis=%23333333&line=%234e9def)](https://starchart.cc/walinejs/waline)
 
 ## License
 
